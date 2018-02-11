@@ -33,6 +33,7 @@ extern FILE *fin; /* we read from this file */
 
 char string_buf[MAX_STR_CONST]; /* to assemble string constants */
 char *string_buf_ptr;
+int commentDepth;
 
 extern int curr_lineno;
 extern int verbose_flag;
@@ -60,7 +61,7 @@ SELF_TYPEID     "SELF_TYPE"
 
 WHITESPACE     [ \n\f\r\t\v]
 
-%x COMMENT SIMPLE_COMMENT STRING
+%x COMMENT SIMPLE_COMMENT STRING STRINGLONGERR
 
 %%
 
@@ -68,7 +69,11 @@ WHITESPACE     [ \n\f\r\t\v]
   *  Nested comments
   */
 "--" { BEGIN(SIMPLE_COMMENT);}
-"(*" { BEGIN(COMMENT);}
+"(*" { 
+        curr_lineno = yylineno;
+        commentDepth = 1;
+        BEGIN(COMMENT);
+     }
 "*)" { 
     curr_lineno = yylineno;
     cool_yylval.error_msg = "Unmatched *)";
@@ -84,10 +89,15 @@ WHITESPACE     [ \n\f\r\t\v]
 }
 
 <COMMENT>{
-    "*)"    { 
-                BEGIN(INITIAL);
+    "(\*"   {
+                commentDepth++;
             }
-    [^*)]|[^*]")"|"*"[^)] {}
+    "\*)"   {   
+                commentDepth--;
+                if(0 == commentDepth)
+                    BEGIN(INITIAL);
+            }
+    [*)]|[^*)] {}
     <<EOF>> {
                 curr_lineno = yylineno;
                 cool_yylval.error_msg = "EOF in comment";
@@ -103,7 +113,6 @@ WHITESPACE     [ \n\f\r\t\v]
 {DARROW}		{ return (DARROW); }
 {ASSIGN}		{ return (ASSIGN); }
 {LE}            { return (LE);     }
-isvoid          { return (ISVOID); }
 
  /*
   * Keywords are case-insensitive except for the values true and false,
@@ -123,6 +132,7 @@ f(?i:alse)         {
 (?i:if)            { return (IF);        }
 (?i:in)            { return (IN);        }
 (?i:inherits)      { return (INHERITS);  }
+(?i:isvoid)        { return (ISVOID);    }
 (?i:let)           { return (LET);       }
 (?i:loop)          { return (LOOP);      }
 (?i:pool)          { return (POOL);      }
@@ -141,12 +151,14 @@ f(?i:alse)         {
   *
   */
 \"  {
+        curr_lineno = yylineno;
         strcpy(string_buf, "");
         BEGIN(STRING); 
     }
 
 <STRING>{
     \"  {
+        curr_lineno = yylineno;
         cool_yylval.symbol = stringtable.add_string(string_buf);
         BEGIN(INITIAL);
         return (STR_CONST);
@@ -159,50 +171,46 @@ f(?i:alse)         {
     }
     \\b {   
        curr_lineno = yylineno;
-       if(strlen(string_buf) < MAX_STR_CONST){
+       if((strlen(string_buf)+1) < MAX_STR_CONST){
            strcat(string_buf, "\b");
        }else{
-           cool_yylval.error_msg = "String constant too long";
-           return ERROR;
+           BEGIN(STRINGLONGERR);
        }
     }
     \\t {   
        curr_lineno = yylineno;
-       if(strlen(string_buf) < MAX_STR_CONST){
+       if((strlen(string_buf)+1) < MAX_STR_CONST){
            strcat(string_buf, "\t");
        }else{
-           cool_yylval.error_msg = "String constant too long";
-           return ERROR;
+           BEGIN(STRINGLONGERR);
        }
     }
     \\n {   
        curr_lineno = yylineno;
-       if(strlen(string_buf) < MAX_STR_CONST){
+       if((strlen(string_buf)+1) < MAX_STR_CONST){
            strcat(string_buf, "\n");
        }else{
-           cool_yylval.error_msg = "String constant too long";
-           return ERROR;
+           BEGIN(STRINGLONGERR);
        }
     }
     \\f {   
        curr_lineno = yylineno;
-       if(strlen(string_buf) < MAX_STR_CONST){
+       if((strlen(string_buf)+1) < MAX_STR_CONST){
            strcat(string_buf, "\f");
        }else{
-           cool_yylval.error_msg = "String constant too long";
-           return ERROR;
+           BEGIN(STRINGLONGERR);
        }
     }
     \\\n {
        curr_lineno = yylineno;
-       if(strlen(string_buf) < MAX_STR_CONST){
+       if((strlen(string_buf)+1) < MAX_STR_CONST){
            strcat(string_buf, "\n");
        }else{
-           cool_yylval.error_msg = "String constant too long";
-           return ERROR;
+           BEGIN(STRINGLONGERR);
        }
     }
     \\\0.*[\n]* {
+        curr_lineno = yylineno;
         cool_yylval.error_msg = "String contains escaped null character.";
         BEGIN(INITIAL);
         return ERROR;
@@ -215,11 +223,10 @@ f(?i:alse)         {
     }
     \\. {
        curr_lineno = yylineno;
-       if(strlen(string_buf) < MAX_STR_CONST){
+       if((strlen(string_buf)+1) < MAX_STR_CONST){
            strcat(string_buf, yytext+1);
        }else{
-           cool_yylval.error_msg = "String constant too long";
-           return ERROR;
+           BEGIN(STRINGLONGERR);
        }
     }
     ([^"\0\n\\])+ {
@@ -227,16 +234,31 @@ f(?i:alse)         {
         if((strlen(string_buf) + strlen(yytext)) < MAX_STR_CONST){
             strcat(string_buf, yytext);
         }else{
-            cool_yylval.error_msg = "String constant too long";
-            return ERROR;
+           BEGIN(STRINGLONGERR);
         }
     }
 }
-
-[:;{}().+\-*/<,~@=] { return *yytext; }
+<STRINGLONGERR>{
+    \"  {
+            curr_lineno = yylineno;
+            cool_yylval.error_msg = "String constant too long";
+            BEGIN(INITIAL);
+            return ERROR;
+    }
+    <<EOF>> {
+       curr_lineno = yylineno;
+       cool_yylval.error_msg = "EOF in string constant";
+       BEGIN(INITIAL);
+       return ERROR;
+    }
+}
+[:;{}().+\-*/<,~@=] {
+                        curr_lineno = yylineno;
+                        return *yytext;
+                    }
 {WHITESPACE} {}
 [0-9]+ {
-    cool_yylval.symbol = inttable.add_int(atoi(yytext)); 
+    cool_yylval.symbol = inttable.add_string(yytext); 
     curr_lineno = yylineno;     
     return (INT_CONST);
 }
@@ -257,3 +279,5 @@ f(?i:alse)         {
     return ERROR;  
 }
 %%
+
+// vim: ft=lex 
