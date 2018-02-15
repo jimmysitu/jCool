@@ -153,10 +153,16 @@
     %type <case_> case
     
     /* Precedence declarations go here. */
+    %right ASSIGN
+    %left NOT
+    %nonassoc LE '<' '='
     %left '+' '-'
     %left '*' '/'
+    %right ISVOID
     %right '~'
-    
+    %right '@'
+    %right '.'
+
     %%
     /* 
     Save the root of the abstract syntax tree in a global variable.
@@ -174,11 +180,14 @@
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
-    class	: CLASS TYPEID '{' feature_list '}' ';'
+    class
+    : CLASS TYPEID '{' feature_list '}' ';'
         { $$ = class_($2,idtable.add_string("Object"),$4,
         stringtable.add_string(curr_filename)); }
     | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
         { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
+    | error
+        {}
     ;
     
     /* Feature list may be empty, but no empty features in list. */
@@ -194,13 +203,15 @@
         {  $$ = $1; } 
     | attr 
         {  $$ = $1; }
+    | error
+        {}
     ;
 
-    method: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' 
+    method: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}'
         {  $$ = method($1, $3, $6, $8); }
     ;
 
-    attr: OBJECTID ':' TYPEID init
+    attr: OBJECTID ':' TYPEID init 
         {  $$ = attr($1, $3, $4); }
     ;
 
@@ -222,14 +233,10 @@
         {  $$ = formal($1, $3); }
     ;
     
-    expression_block: /* empty */
-        {  $$ = nil_Expressions(); }
-    | ';'
-        {  $$ = nil_Expressions(); }
-    | expression ';'
+    expression_block: expression ';'
         {  $$ = single_Expressions($1); }
-    | expression_block ';' expression ';'
-        {  $$ = append_Expressions($1, single_Expressions($3)); }
+    | expression_block expression ';'
+        {  $$ = append_Expressions($1, single_Expressions($2)); }
     ;
     
     expression_list: /* empty */
@@ -252,6 +259,8 @@
         {  $$ = cond($2, $4, $6); }
     | WHILE expression LOOP expression POOL
         {  $$ = loop($2, $4); }
+    | WHILE expression LOOP error 
+        {}
     | '{' expression_block '}'
         {  $$ = block($2); }
     | LET let_list

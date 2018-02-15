@@ -68,7 +68,7 @@ WHITESPACE     [ \n\f\r\t\v]
  /*
   *  Nested comments
   */
-"--" { BEGIN(SIMPLE_COMMENT);}
+"--" {curr_lineno = yylineno; BEGIN(SIMPLE_COMMENT);}
 "(*" { 
         curr_lineno = yylineno;
         commentDepth = 1;
@@ -83,21 +83,23 @@ WHITESPACE     [ \n\f\r\t\v]
 
 
 <SIMPLE_COMMENT>{
-    [\n]    {   BEGIN(INITIAL); }
-    [^\n]   {}
-    <<EOF>> {   BEGIN(INITIAL); }
+    [\n]    {curr_lineno = yylineno;   BEGIN(INITIAL); }
+    [^\n]   {curr_lineno = yylineno;}
+    <<EOF>> {curr_lineno = yylineno;   BEGIN(INITIAL); }
 }
 
 <COMMENT>{
-    "(\*"   {
+    "(\*"   {   
+                curr_lineno = yylineno;
                 commentDepth++;
             }
     "\*)"   {   
+                curr_lineno = yylineno;
                 commentDepth--;
                 if(0 == commentDepth)
                     BEGIN(INITIAL);
             }
-    [*)]|[^*)] {}
+    [*)]|[^*)] {curr_lineno = yylineno;}
     <<EOF>> {
                 curr_lineno = yylineno;
                 cool_yylval.error_msg = "EOF in comment";
@@ -110,39 +112,40 @@ WHITESPACE     [ \n\f\r\t\v]
  /*
   *  The multiple-character operators.
   */
-{DARROW}		{ return (DARROW); }
-{ASSIGN}		{ return (ASSIGN); }
-{LE}            { return (LE);     }
+{DARROW}		{curr_lineno = yylineno; return (DARROW); }
+{ASSIGN}		{curr_lineno = yylineno; return (ASSIGN); }
+{LE}            {curr_lineno = yylineno; return (LE);     }
 
  /*
   * Keywords are case-insensitive except for the values true and false,
   * which must begin with a lower-case letter.
   */
 (?i:class)         {curr_lineno = yylineno; return (CLASS);     }
-(?i:else)          { return (ELSE);      }
+(?i:else)          {curr_lineno = yylineno; return (ELSE);      }
 t(?i:rue)          {
                         cool_yylval.boolean = true;
                         return (BOOL_CONST);
                    }
-(?i:fi)            { return (FI);        }
+(?i:fi)            {curr_lineno = yylineno; return (FI);        }
 f(?i:alse)         { 
+                        curr_lineno = yylineno;
                         cool_yylval.boolean = false;
                         return (BOOL_CONST);
                    }
-(?i:if)            { return (IF);        }
-(?i:in)            { return (IN);        }
-(?i:inherits)      { return (INHERITS);  }
-(?i:isvoid)        { return (ISVOID);    }
-(?i:let)           { return (LET);       }
-(?i:loop)          { return (LOOP);      }
-(?i:pool)          { return (POOL);      }
-(?i:then)          { return (THEN);      }
-(?i:while)         { return (WHILE);     }
-(?i:case)          { return (CASE);      }
-(?i:esac)          { return (ESAC);      }
-(?i:new)           { return (NEW);       }
-(?i:of)            { return (OF);        }
-(?i:not)           { return (NOT);       }
+(?i:if)            {curr_lineno = yylineno; return (IF);        }
+(?i:in)            {curr_lineno = yylineno; return (IN);        }
+(?i:inherits)      {curr_lineno = yylineno; return (INHERITS);  }
+(?i:isvoid)        {curr_lineno = yylineno; return (ISVOID);    }
+(?i:let)           {curr_lineno = yylineno; return (LET);       }
+(?i:loop)          {curr_lineno = yylineno; return (LOOP);      }
+(?i:pool)          {curr_lineno = yylineno; return (POOL);      }
+(?i:then)          {curr_lineno = yylineno; return (THEN);      }
+(?i:while)         {curr_lineno = yylineno; return (WHILE);     }
+(?i:case)          {curr_lineno = yylineno; return (CASE);      }
+(?i:esac)          {curr_lineno = yylineno; return (ESAC);      }
+(?i:new)           {curr_lineno = yylineno; return (NEW);       }
+(?i:of)            {curr_lineno = yylineno; return (OF);        }
+(?i:not)           {curr_lineno = yylineno; return (NOT);       }
 
  /*
   *  String constants (C syntax)
@@ -164,8 +167,8 @@ f(?i:alse)         {
         return (STR_CONST);
     }
     \n  {
-        cool_yylval.error_msg = "Unterminated string constant";
         curr_lineno = yylineno;
+        cool_yylval.error_msg = "Unterminated string constant";
         BEGIN(INITIAL);
         return ERROR;
     }
@@ -256,7 +259,9 @@ f(?i:alse)         {
                         curr_lineno = yylineno;
                         return *yytext;
                     }
-{WHITESPACE} {}
+{WHITESPACE} {
+                curr_lineno = yylineno;
+             }
 [0-9]+ {
     cool_yylval.symbol = inttable.add_string(yytext); 
     curr_lineno = yylineno;     
