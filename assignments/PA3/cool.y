@@ -195,8 +195,8 @@
         {  $$ = nil_Features(); }
     | feature ';'
         {  $$ = single_Features($1); }
-    | feature_list feature ';'
-        {  $$ = append_Features($1, single_Features($2)); }
+    | feature ';' feature_list
+        {  $$ = append_Features(single_Features($1), $3); }
     ;
 
     feature: method
