@@ -50,6 +50,7 @@ extern YYSTYPE cool_yylval;
  */
 
 DARROW          =>
+INT_CONST       [0-9A-Fa-f]
 
 %%
 
@@ -62,13 +63,13 @@ DARROW          =>
   *  The multiple-character operators.
   */
 {DARROW}		{ return (DARROW); }
+{INT_CONST}     { return (INT_CONST); }
 
  /*
   * Keywords are case-insensitive except for the values true and false,
   * which must begin with a lower-case letter.
   */
-
-
+(?i:class)      { return (CLASS); }
  /*
   *  String constants (C syntax)
   *  Escape sequence \c is accepted for all characters c. Except for 
