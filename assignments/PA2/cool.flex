@@ -62,7 +62,7 @@ DARROW          =>
 INT_CONST       [0-9]+
 LE              <=
 TYPEID          [A-Z][A-Za-z0-9_]*
-OBJECTID        [a-z][A-Za-z0-0_]*
+OBJECTID        [a-z][A-Za-z0-9_]*
 WHITE_SPACE     [ \n\f\r\t\v]+
 
 %%
@@ -104,15 +104,18 @@ WHITE_SPACE     [ \n\f\r\t\v]+
                     BEGIN(INITIAL);
                 }
             }
-    [^(\*]|[^\*)] {
-                curr_lineno = yylineno;
-            }
+
     <<EOF>> {
                 curr_lineno = yylineno;
                 yylval.error_msg = "EOF in comment";
                 BEGIN(INITIAL);
                 return ERROR;
             }
+
+    . {
+        /* Return anything no match */
+        curr_lineno = yylineno;
+    }
 }
 
  /*
@@ -223,10 +226,17 @@ t(?i:rue)       {
     }
 
     <<EOF>> {
-       curr_lineno = yylineno;
-       cool_yylval.error_msg = "EOF in string constant";
-       BEGIN(INITIAL);
-       return ERROR;
+        curr_lineno = yylineno;
+        cool_yylval.error_msg = "EOF in string constant";
+        BEGIN(INITIAL);
+        return ERROR;
+    }
+
+    . {
+        /* Return anything no match */
+        curr_lineno = yylineno;
+        cool_yylval.error_msg = yytext;
+        return ERROR;
     }
 }
 
@@ -263,7 +273,7 @@ t(?i:rue)       {
                 }
 {WHITE_SPACE}   { curr_lineno = yylineno; }
 
-[,:;{}()='\.\-\+\[\]\<\>]    {
+[,:;{}()='\*\.\-\+\[\]\<\>]    {
                     curr_lineno = yylineno;
                     return *yytext;
                 }
