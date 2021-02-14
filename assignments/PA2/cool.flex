@@ -44,13 +44,15 @@ extern YYSTYPE cool_yylval;
  */
 
 %}
+%option noyywrap
+%option yylineno
 
 /*
  * Define names for regular expressions here.
  */
 
 DARROW          =>
-INT_CONST       [0-9A-Fa-f]
+INT_CONST       [0-9]+
 
 %%
 
@@ -70,6 +72,25 @@ INT_CONST       [0-9A-Fa-f]
   * which must begin with a lower-case letter.
   */
 (?i:class)      { return (CLASS); }
+(?i:else)       { return (ELSE);  }
+f(?i:alse)      { return (BOOL_CONST); }
+(?i:fi)         { return (FI); }
+(?i:if)         { return (IF); }
+(?i:in)         { return (IN); }
+(?i:inherits)   { return (INHERITS); }
+(?i:let)        { return (LET);  }
+(?i:loop)       { return (LOOP); }
+(?i:pool)       { return (POOL); }
+(?i:then)       { return (THEN); }
+t(?i:rue)       { return (BOOL_CONST); }
+(?i:while)      { return (WHILE); }
+(?i:case)       { return (CASE);  }
+(?i:esac)       { return (ESAC);  }
+(?i:of)         { return (OF); }
+(?i:new)        { return (NEW); }
+(?i:isvoid)     { return (ISVOID); }
+(?i:not)        { return (NOT); }
+
  /*
   *  String constants (C syntax)
   *  Escape sequence \c is accepted for all characters c. Except for 
@@ -77,5 +98,5 @@ INT_CONST       [0-9A-Fa-f]
   *
   */
 
-
 %%
+
