@@ -30,3 +30,19 @@ This compile fail is cause by compiling with g++ and get C++ yylex while yylex i
 
 Add `%option noyywrap` to cool.flex to avoid linking with libfl.so
 
+
+
+## Tips for PA2
+
+1. Place a "." rule at the end of cool.flex, so any missing character will be reported as ERROR
+
+2. Try grading script, fix the fail case one by one
+
+3. Remember regression test when a fixed apply
+
+   
+
+   
+
+   
+

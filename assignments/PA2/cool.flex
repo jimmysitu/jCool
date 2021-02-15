@@ -112,6 +112,10 @@ WHITE_SPACE     [ \n\f\r\t\v]+
                 return ERROR;
             }
 
+    [\n\r]  {
+                curr_lineno = yylineno;
+            }
+
     . {
         /* Return anything no match */
         curr_lineno = yylineno;
@@ -196,11 +200,58 @@ t(?i:rue)       {
         }
     }
 
-    \\0 {
+    [\\]?\0.*["\n] {
         curr_lineno = yylineno;
         cool_yylval.error_msg = "String contains escaped null character.";
         BEGIN(INITIAL);
         return ERROR;
+    }
+
+    \\n {
+        curr_lineno = yylineno;
+        stringLength++;
+        if(stringLength < MAX_STR_CONST){
+            strcat(string_buf, "\n");
+        }else{
+            BEGIN(STRING_LONG_ERROR);
+        }
+    }
+    \\t {
+        curr_lineno = yylineno;
+        stringLength++;
+        if(stringLength < MAX_STR_CONST){
+            strcat(string_buf, "\t");
+        }else{
+            BEGIN(STRING_LONG_ERROR);
+        }
+    }
+    \\b {
+        curr_lineno = yylineno;
+        stringLength++;
+        if(stringLength < MAX_STR_CONST){
+            strcat(string_buf, "\b");
+        }else{
+            BEGIN(STRING_LONG_ERROR);
+        }
+    }
+    \\f {
+        curr_lineno = yylineno;
+        stringLength++;
+        if(stringLength < MAX_STR_CONST){
+            strcat(string_buf, "\f");
+        }else{
+            BEGIN(STRING_LONG_ERROR);
+        }
+    }
+    
+    "\\"  {
+        curr_lineno = yylineno;
+        stringLength++;
+        if(stringLength < MAX_STR_CONST){
+            strcat(string_buf, "\\");
+        }else{
+            BEGIN(STRING_LONG_ERROR);
+        }
     }
     
     \\. {
@@ -213,6 +264,7 @@ t(?i:rue)       {
             BEGIN(STRING_LONG_ERROR);
         }
     }
+    
 
 
     ([^"\0\n\\])+ {
@@ -273,7 +325,7 @@ t(?i:rue)       {
                 }
 {WHITE_SPACE}   { curr_lineno = yylineno; }
 
-[,:;{}()='\*\.\-\+\[\]\<\>]    {
+[,:;{}()=~@/'\*\.\-\+\<]    {
                     curr_lineno = yylineno;
                     return *yytext;
                 }
