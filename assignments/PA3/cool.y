@@ -142,6 +142,7 @@
     %type <formal> formal
 
     %type <expressions> optional_expression_list
+    %type <expressions> expression_list
     %type <expressions> expression_block
     
     %type <expression> init
@@ -150,8 +151,17 @@
 
     %type <cases> case_list
     %type <case_> case
+
     /* Precedence declarations go here. */
-    
+    %right ASSIGN
+    %right NOT
+    %nonassoc LE '<' '='
+    %left '+' '-'
+    %left '*' '/'
+    %right ISVOID
+    %right '~'
+    %right '@'
+    %right '.'
     
     %%
     /* 
@@ -196,7 +206,7 @@
         {   $$ = method($1, $3, $6, $8);}
     | OBJECTID ':' TYPEID init ';'
         {   $$ = attr($1, $3, $4); }
-    | error
+    | error ';'
         {}
     ;
     
@@ -218,10 +228,12 @@
     expression
     : OBJECTID ASSIGN expression
         {   $$ = assign($1, $3); }
-    | expression '.' OBJECTID '(' optional_expression_list ')'
-        {   $$ = dispatch($1, $3, $5); }
     | expression '@' TYPEID '.' OBJECTID '(' optional_expression_list ')'
         {   $$ = static_dispatch($1, $3, $5, $7); }
+    | expression '.' OBJECTID '(' optional_expression_list ')'
+        {   $$ = dispatch($1, $3, $5); }
+    | OBJECTID '(' optional_expression_list ')'
+        {   $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
     | IF expression THEN expression ELSE expression IF
         {   $$ = cond($2, $4, $6); }
     | WHILE expression LOOP expression POOL
@@ -262,10 +274,10 @@
         {   $$ = object($1); }
     | INT_CONST
         {   $$ = int_const($1); }
-    | BOOL_CONST
-        {   $$ = bool_const($1); }
     | STR_CONST
         {   $$ = string_const($1); }
+    | BOOL_CONST
+        {   $$ = bool_const($1); }
     | error
         {}
     ;
@@ -287,7 +299,7 @@
         {  $$ = let($1, $3, $4, $6); }
     | OBJECTID ':' TYPEID init ',' let_list
         {  $$ = let($1, $3, $4, $6); }
-    | error
+    | error ',' let_list
         {}
     ;
 
@@ -299,12 +311,20 @@
         {   $$ = $2; }
     ;
 
-    /* [ expr, [,expr]* ] */
+    /* [ expr [,expr]* ] */
     optional_expression_list
     :       /* empty */
         {   $$ = nil_Expressions(); }
-    | expression ',' optional_expression_list
+    | expression_list
+        {   $$ = $1; }
+    ;
+    expression_list
+    : expression
+        {   $$ = single_Expressions($1); }
+    | expression ',' expression_list
         {   $$ = append_Expressions(single_Expressions($1), $3); }
+    | error ','
+        {}
     ;
 
     /* [expr;]+ */
@@ -313,6 +333,8 @@
         {   $$ = single_Expressions($1); }
     | expression ';' expression_block
         {   $$ = append_Expressions(single_Expressions($1), $3); }
+    | error
+        {/* empty expr block is not valid */}
     ;
 
     /* end of grammar */
