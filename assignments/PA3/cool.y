@@ -179,9 +179,7 @@
         }
     | CLASS TYPEID INHERITS TYPEID '{' optional_feature_list '}' ';'
         {   $$ = class_($2,$4,$6,stringtable.add_string(curr_filename));}
-    | CLASS TYPEID error
-        {}
-    | error
+    | error ';'
         {}
     ;
     
@@ -196,7 +194,7 @@
     feature
     : OBJECTID '(' optional_formal_list ')' ':' TYPEID '{' expression '}' ';'
         {   $$ = method($1, $3, $6, $8);}
-    | OBJECTID ':' TYPEID init
+    | OBJECTID ':' TYPEID init ';'
         {   $$ = attr($1, $3, $4); }
     | error
         {}
@@ -206,6 +204,8 @@
     optional_formal_list
     :		/* empty */
         {   $$ = nil_Formals(); }
+    | formal
+        {   $$ = single_Formals($1); }
     | formal ',' optional_formal_list
         {   $$ = append_Formals(single_Formals($1), $3); }
     ;
@@ -313,7 +313,7 @@
         {   $$ = single_Expressions($1); }
     | expression ';' expression_block
         {   $$ = append_Expressions(single_Expressions($1), $3); }
-
+    ;
 
     /* end of grammar */
     %%
