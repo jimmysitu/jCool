@@ -42,7 +42,30 @@ Add `%option noyywrap` to cool.flex to avoid linking with libfl.so
 
    
 
+## Tips for PA3
+
+1. Discover recursive grammar structure as much as possible, for example
+
+   ```text
+   expr ::= let ID : TYPE [ <- expr ] [[, ID : TYPE [ <- expr ]]]∗ in expr
+   ```
+
+   there are unlimited structure ` ID : TYPE [ <- expr]`, and they are recursive until meet `in expr`, so rules should be
+
+   ```bison
+   expression
+   	: LET let_list
+   		{ $$ = $2;}
    
+   let_list
+       : OBJECTID ':' TYPEID init IN expression
+           {  $$ = let($1, $3, $4, $6); }
+       | OBJECTID ':' TYPEID init ',' let_list
+           {  $$ = let($1, $3, $4, $6); }
+       ;
+   ```
 
    
+
+
 
