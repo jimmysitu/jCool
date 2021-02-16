@@ -234,7 +234,7 @@
         {   $$ = dispatch($1, $3, $5); }
     | OBJECTID '(' optional_expression_list ')'
         {   $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
-    | IF expression THEN expression ELSE expression IF
+    | IF expression THEN expression ELSE expression FI
         {   $$ = cond($2, $4, $6); }
     | WHILE expression LOOP expression POOL
         {   $$ = loop($2, $4); }
