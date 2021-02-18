@@ -2,7 +2,7 @@
 #define SEMANT_H_
 
 #include <assert.h>
-#include <iostream>  
+#include <iostream>
 #include "cool-tree.h"
 #include "stringtab.h"
 #include "symtab.h"
@@ -23,7 +23,11 @@ class ClassTable {
 private:
   int semant_errors;
   void install_basic_classes();
+  void install_user_classes(Classes classes);
+
   ostream& error_stream;
+  Classes allClasses;
+  SymbolTable<Symbol, Entry> *inheritTable;
 
 public:
   ClassTable(Classes);
@@ -31,6 +35,10 @@ public:
   ostream& semant_error();
   ostream& semant_error(Class_ c);
   ostream& semant_error(Symbol filename, tree_node *t);
+
+  void buildInheritTable(Classes classes);
+  bool checkInheritTable();
+  bool isCyclic(Symbol symbol);
 };
 
 
